@@ -104,16 +104,17 @@ ssh into the virtual machine Master
 	- i tried calico
 		kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
 
-		[vagrant@localhost ~]$ kubectl get pods -A
+		[vagrant@localhost ~]$ kubectl get pods --all-namespaces
 		NAMESPACE     NAME                                            READY   STATUS    RESTARTS   AGE
-		kube-system   calico-kube-controllers-76d4774d89-jjbfc        1/1     Running   0          84s
-		kube-system   calico-node-5mdp8                               1/1     Running   0          84s
-		kube-system   coredns-66bff467f8-6p5lr                        1/1     Running   0          27m
-		kube-system   coredns-66bff467f8-dw9qm                        1/1     Running   0          27m
-		kube-system   etcd-localhost.localdomain                      1/1     Running   0          27m
-		kube-system   kube-apiserver-localhost.localdomain            1/1     Running   0          27m
-		kube-system   kube-controller-manager-localhost.localdomain   1/1     Running   0          27m
-		kube-system   kube-proxy-5pw2l                                1/1     Running   0          27m
-		kube-system   kube-scheduler-localhost.localdomain            1/1     Running   0          27m
+		kube-system   calico-kube-controllers-76d4774d89-fcmbt        1/1     Running   0          7m28s
+		kube-system   calico-node-gktc7                               1/1     Running   0          7m28s
+		kube-system   coredns-66bff467f8-s9g5n                        1/1     Running   0          15m
+		kube-system   coredns-66bff467f8-wgts5                        1/1     Running   0          15m
+		kube-system   etcd-localhost.localdomain                      1/1     Running   0          15m
+		kube-system   kube-apiserver-localhost.localdomain            1/1     Running   0          15m
+		kube-system   kube-controller-manager-localhost.localdomain   1/1     Running   0          15m
+		kube-system   kube-proxy-nwfk6                                1/1     Running   0          15m
+		kube-system   kube-scheduler-localhost.localdomain            1/1     Running   0          15m
+
 
 	
