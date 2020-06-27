@@ -73,49 +73,49 @@ This is what happens via setup.sh in virtual machine
 		systemctl daemon-reload
 		systemctl restart kubelet
 
-########## Installation is done directly during vagrant up, move to Install a single control-plane Kubernetes cluster ###########
-	- ssh into vm
-	- kubeadm init (look at online docs for modifications to your cluster)
+######### Spawning 2 VM's with setup completed and additional stuff to create cluster ########
+	- vagrant up will spawn two virtual machines
+		- k8s-head supposed to be the master of the cluster with ip 192.168.205.10
+		- k8s-node-1 supposed to be the worker of the cluster with ip 192.168.205.11
 
-		Your Kubernetes control-plane has initialized successfully!
+	- set hostname( can be moved to vagrant provision)
+		[root@k8s-head vagrant]# HOST_NAME=$(hostname -s) 
+
+	- set IP address variable at k8s-head (this can be moved to vagrant provision)
+		# IP_ADDR=192.168.205.10
+
+	- kubeadm init with the following instructions
+		[root@k8s-head vagrant]# kubeadm init --apiserver-advertise-address=$IP_ADDR --apiserver-cert-extra-sans=$IP_ADDR --node-name $HOST_NAME --pod-network-cidr=192.168.0.0/16
 
 	- To start using your cluster, you need to run the following as a regular user:
-
 		mkdir -p $HOME/.kube
 		sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 		sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-	- let us check the cluster status 
+	- The next step is going to be to deploy a cluster so before that we should add the node 'k8s-node-1' to this cluster ( the command to add new nodes will be available when the cluster creation at master completes)
+		[root@k8s-node-1 vagrant]# kubeadm join 192.168.205.10:6443 --token yuc3ou.dyoai0yris8wszn9 \
+		>     --discovery-token-ca-cert-hash sha256:78255514d13c5bf7f1bb3f8a3511fb1574e57c37fba984d7788a1d758c87446a
 
-		Kubernetes master is running at https://10.0.2.15:6443
-		KubeDNS is running at https://10.0.2.15:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+		OUTPUT
 
-		To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+		W0627 13:03:32.561915   13838 join.go:346] [preflight] WARNING: JoinControlPane.controlPlane settings will be ignored when control-plane flag is not set.
+		[preflight] Running pre-flight checks
+		[preflight] Reading configuration from the cluster...
+		[preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+		[kubelet-start] Downloading configuration for the kubelet from the "kubelet-config-1.18" ConfigMap in the kube-system namespace
+		[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+		[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+		[kubelet-start] Starting the kubelet
+		[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
 
-	- You should now deploy a pod network to the cluster.
-	
-		Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
-		https://kubernetes.io/docs/concepts/cluster-administration/addons/
+		This node has joined the cluster:
+		* Certificate signing request was sent to apiserver and a response was received.
+		* The Kubelet was informed of the new secure connection details.
 
-		Then you can join any number of worker nodes by running the following on each as root:
+		Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
 
-		kubeadm join 10.0.2.15:6443 --token 7nqd9k.8bq7qi0cr2bdsl2w \
-		    --discovery-token-ca-cert-hash sha256:ed0175dfabd807d9e378d86b8211b25f500ff800b387fe39f0afb7ee88b81ee9
-
-	- i tried calico
+	- Now on the master we deploy the calico networking pod config
 		kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
-
-		[vagrant@localhost ~]$ kubectl get pods --all-namespaces
-		NAMESPACE     NAME                                            READY   STATUS    RESTARTS   AGE
-		kube-system   calico-kube-controllers-76d4774d89-fcmbt        1/1     Running   0          7m28s
-		kube-system   calico-node-gktc7                               1/1     Running   0          7m28s
-		kube-system   coredns-66bff467f8-s9g5n                        1/1     Running   0          15m
-		kube-system   coredns-66bff467f8-wgts5                        1/1     Running   0          15m
-		kube-system   etcd-localhost.localdomain                      1/1     Running   0          15m
-		kube-system   kube-apiserver-localhost.localdomain            1/1     Running   0          15m
-		kube-system   kube-controller-manager-localhost.localdomain   1/1     Running   0          15m
-		kube-system   kube-proxy-nwfk6                                1/1     Running   0          15m
-		kube-system   kube-scheduler-localhost.localdomain            1/1     Running   0          15m
 
 
 ######### After adding one more node and deploying calico pod network #########
