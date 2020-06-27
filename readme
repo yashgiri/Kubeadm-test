@@ -1,8 +1,8 @@
 Install latest vagrant
-Start a vagrant vm by doing vagrant init and making changes to the Vagrantfile so the memory size is 2048, cpus is 2 and install docker by shell commands(todo) and swapoff -a(todo).
-ssh into the virtual machine Master
-	- sudo apt get update (this is to be moved to vagrant step)
-	- If docker is not provisioned install docker(https://kubernetes.io/docs/setup/production-environment/container-runtimes/), for centos7 these are the following steps:
+Start a vagrant vm by doing vagrant init and making changes to the Vagrantfile so the memory size is 2048, cpus is 2 and install docker by shell commands and swap is turned off.
+This is what happens via setup.sh in virtual machine
+	- yum update
+	- Docker installation:
 		# (Install Docker CE)
 		## Set up the repository
 		### Install required packages
@@ -47,8 +47,8 @@ ssh into the virtual machine Master
 		sudo systemctl enable docker
 
 
-	- You will install these packages on all of your machines: kubeadm, kubelet, kubectl
-	- run the following commands (applies for CentOS, RHEL or Fedora)(https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+	- installation of these packages on your machines: kubeadm, kubelet, kubectl
+	- following commands (applies for CentOS, RHEL or Fedora)(https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 		cat <<EOF > /etc/yum.repos.d/kubernetes.repo
 		[kubernetes]
 		name=Kubernetes
@@ -73,7 +73,8 @@ ssh into the virtual machine Master
 		systemctl daemon-reload
 		systemctl restart kubelet
 
-########## Installation is done move to Install a single control-plane Kubernetes cluster ###########
+########## Installation is done directly during vagrant up, move to Install a single control-plane Kubernetes cluster ###########
+	- ssh into vm
 	- kubeadm init (look at online docs for modifications to your cluster)
 
 		Your Kubernetes control-plane has initialized successfully!
@@ -117,4 +118,22 @@ ssh into the virtual machine Master
 		kube-system   kube-scheduler-localhost.localdomain            1/1     Running   0          15m
 
 
-	
+######### After adding one more node and deploying calico pod network #########
+	-	[vagrant@k8s-head ~]$ kubectl get pods --all-namespaces -o wide
+		NAMESPACE     NAME                                       READY   STATUS    RESTARTS   AGE     IP                NODE         NOMINATED NODE   READINESS GATES
+		kube-system   calico-kube-controllers-76d4774d89-5qqz2   0/1     Running   0          3m55s   192.168.193.193   k8s-head     <none>           <none>
+		kube-system   calico-node-26v4w                          1/1     Running   0          3m56s   10.0.2.15         k8s-head     <none>           <none>
+		kube-system   calico-node-bdf9k                          1/1     Running   0          3m56s   10.0.2.15         k8s-node-1   <none>           <none>
+		kube-system   coredns-66bff467f8-l298d                   1/1     Running   0          19m     192.168.193.194   k8s-head     <none>           <none>
+		kube-system   coredns-66bff467f8-rvspb                   0/1     Running   0          19m     192.168.109.65    k8s-node-1   <none>           <none>
+		kube-system   etcd-k8s-head                              1/1     Running   0          20m     10.0.2.15         k8s-head     <none>           <none>
+		kube-system   kube-apiserver-k8s-head                    1/1     Running   0          20m     10.0.2.15         k8s-head     <none>           <none>
+		kube-system   kube-controller-manager-k8s-head           1/1     Running   2          20m     10.0.2.15         k8s-head     <none>           <none>
+		kube-system   kube-proxy-59bld                           1/1     Running   0          15m     10.0.2.15         k8s-node-1   <none>           <none>
+		kube-system   kube-proxy-mtl6r                           1/1     Running   0          19m     10.0.2.15         k8s-head     <none>           <none>
+		kube-system   kube-scheduler-k8s-head                    1/1     Running   2          20m     10.0.2.15         k8s-head     <none>           <none>
+		[vagrant@k8s-head ~]$ kubectl get nodes
+		NAME         STATUS   ROLES    AGE   VERSION
+		k8s-head     Ready    master   20m   v1.18.5
+		k8s-node-1   Ready    <none>   15m   v1.18.5
+		[vagrant@k8s-head ~]$ 
