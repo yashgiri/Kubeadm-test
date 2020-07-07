@@ -1,6 +1,7 @@
-Install latest vagrant
-Start a vagrant vm by doing vagrant init and making changes to the Vagrantfile so the memory size is 2048, cpus is 2 and install docker by shell commands and swap is turned off.
-This is what happens via setup.sh in virtual machine
+Install latest Virtualbox (version 6.1.10r138449)
+Install latest vagrant (Version 2.2.9 at the time)
+Start by doing vagrant up. Vagrantfile is modified such that the memory size is 2048, cpus is 2 and install docker by shell commands and swap is turned off.
+This is what happens via setup.sh in virtual machine (vagrant up will do this for you)
 	- yum update
 	- Docker installation:
 		# (Install Docker CE)
@@ -92,7 +93,7 @@ This is what happens via setup.sh in virtual machine
 		sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 		sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-	- The next step is going to be to deploy a cluster so before that we should add the node 'k8s-node-1' to this cluster ( the command to add new nodes will be available when the cluster creation at master completes)
+	- The next step is going to be to deploy a cluster so before that we should add the node 'k8s-node-1' to this cluster ( the command to add new nodes will be available when the cluster creation at master completes make sure to copy it from there)
 		[root@k8s-node-1 vagrant]# kubeadm join 192.168.205.10:6443 --token yuc3ou.dyoai0yris8wszn9 \
 		>     --discovery-token-ca-cert-hash sha256:78255514d13c5bf7f1bb3f8a3511fb1574e57c37fba984d7788a1d758c87446a
 

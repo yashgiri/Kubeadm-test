@@ -26,6 +26,7 @@ Vagrant.configure("2") do |config|
     config.vm.define opts[:name] do |i|
       i.vm.provider "virtualbox" do |vb|
         vb.name = opts[:name]  
+        
         # Customize the amount of memory on the VM:
         vb.memory = opts[:mem]
         vb.cpus = opts[:cpu]
@@ -35,12 +36,12 @@ Vagrant.configure("2") do |config|
       i.vm.hostname = opts[:name]
       i.vm.network :private_network, ip: opts[:eth1]
       i.ssh.forward_agent = true 
-      i.vm.provision "file", source: "./setup.sh", destination: "."
-      #config.vm.provision "shell", path: "setup.sh"
+      i.vm.provision "shell", path: "setup.sh"
+
     end
 
   end
-  #
+
   # View the documentation for the provider you are using for more
   # information on available options.
 
