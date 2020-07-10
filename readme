@@ -1,7 +1,15 @@
 Install latest Virtualbox (version 6.1.10r138449)
 Install latest vagrant (Version 2.2.9 at the time)
-Start by doing vagrant up. Vagrantfile is modified such that the memory size is 2048, cpus is 2 and install docker by shell commands and swap is turned off.
-This is what happens via setup.sh in virtual machine (vagrant up will do this for you)
+Install Ansible (ansible 2.9.10)
+
+Follow steps 1), 2), 3) for quick setup
+
+Vagrantfile is modified such that the memory size is 2048, cpus is 2 and docker is installed by shell commands and swap is turned off.
+
+Steps to set-up
+1) vagrant up
+    - vagrant up spawns 2 VM's k8s-head and k8s-node-1 and provisioning done by setup.sh
+    This is what happens via setup.sh in virtual machine (vagrant up will do this for you)
 	- yum update
 	- Docker installation:
 		# (Install Docker CE)
@@ -47,7 +55,20 @@ This is what happens via setup.sh in virtual machine (vagrant up will do this fo
 		# If you want the docker service to start on boot, run the following command:
 		sudo systemctl enable docker
 
+############## Vagrant up is completed, time to install SSH keys #############
+we need to install ssh keys for our ansible scripts to work smoothly
 
+2) ansible-playbook install_keys.yml -i inventory -u vagrant
+
+    - we need to generate a pair of rsa/ed_25519 SSH keys and the ansible script install_keys.yml does it for us
+        generate a random key/pair via script
+        The ssh keys in the ssh_keys folder are to be setup on the vagrant machines (this could have been done from vagrant itself but the target
+        of such scripts is to be tried on nodes already not having ssh keys).
+        ssh add private key so that it doesnt ask for confirmation
+        Also if there are problems of offending key make sure to check if your ~/.ssh/known_hosts you might need to clear any previoud entries
+        you might have for k8s-head and k8s-node-1
+
+3) ansible-playbook cluster-setup.yml -i inventory -u vagrant
 	- installation of these packages on your machines: kubeadm, kubelet, kubectl
 	- following commands (applies for CentOS, RHEL or Fedora)(https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 		cat <<EOF > /etc/yum.repos.d/kubernetes.repo
@@ -74,48 +95,49 @@ This is what happens via setup.sh in virtual machine (vagrant up will do this fo
 		systemctl daemon-reload
 		systemctl restart kubelet
 
-######### Spawning 2 VM's with setup completed and additional stuff to create cluster ########
 	- vagrant up will spawn two virtual machines
 		- k8s-head supposed to be the master of the cluster with ip 192.168.205.10
 		- k8s-node-1 supposed to be the worker of the cluster with ip 192.168.205.11
 
-	- set hostname( can be moved to vagrant provision)
-		[root@k8s-head vagrant]# HOST_NAME=$(hostname -s) 
+    Following stuff on master node
+        - set hostname( can be moved to vagrant provision)
+            [root@k8s-head vagrant]# HOST_NAME=$(hostname -s)
 
-	- set IP address variable at k8s-head (this can be moved to vagrant provision)
-		# IP_ADDR=192.168.205.10
+        - set IP address variable at k8s-head (this can be moved to vagrant provision)
+            # IP_ADDR=192.168.205.10
 
-	- kubeadm init with the following instructions
-		[root@k8s-head vagrant]# kubeadm init --apiserver-advertise-address=$IP_ADDR --apiserver-cert-extra-sans=$IP_ADDR --node-name $HOST_NAME --pod-network-cidr=192.168.0.0/16
+        - kubeadm init with the following instructions
+            [root@k8s-head vagrant]# kubeadm init --apiserver-advertise-address=$IP_ADDR --apiserver-cert-extra-sans=$IP_ADDR --node-name $HOST_NAME --pod-network-cidr=192.168.0.0/16
 
-	- To start using your cluster, you need to run the following as a regular user:
-		mkdir -p $HOME/.kube
-		sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-		sudo chown $(id -u):$(id -g) $HOME/.kube/config
+        - To start using your cluster, you need to run the following as a regular user:
+            mkdir -p $HOME/.kube
+            sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+            sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
-	- The next step is going to be to deploy a cluster so before that we should add the node 'k8s-node-1' to this cluster ( the command to add new nodes will be available when the cluster creation at master completes make sure to copy it from there)
-		[root@k8s-node-1 vagrant]# kubeadm join 192.168.205.10:6443 --token yuc3ou.dyoai0yris8wszn9 \
-		>     --discovery-token-ca-cert-hash sha256:78255514d13c5bf7f1bb3f8a3511fb1574e57c37fba984d7788a1d758c87446a
+    Following stuff on Future worker nodes
+        - The next step is going to be to deploy a cluster so before that we should add the node 'k8s-node-1' to this cluster ( the command to add new nodes will be available when the cluster creation at master completes make sure to copy it from there)
+            [root@k8s-node-1 vagrant]# kubeadm join 192.168.205.10:6443 --token yuc3ou.dyoai0yris8wszn9 \
+            >     --discovery-token-ca-cert-hash sha256:78255514d13c5bf7f1bb3f8a3511fb1574e57c37fba984d7788a1d758c87446a
 
-		OUTPUT
+            OUTPUT
 
-		W0627 13:03:32.561915   13838 join.go:346] [preflight] WARNING: JoinControlPane.controlPlane settings will be ignored when control-plane flag is not set.
-		[preflight] Running pre-flight checks
-		[preflight] Reading configuration from the cluster...
-		[preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
-		[kubelet-start] Downloading configuration for the kubelet from the "kubelet-config-1.18" ConfigMap in the kube-system namespace
-		[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
-		[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
-		[kubelet-start] Starting the kubelet
-		[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
+            W0627 13:03:32.561915   13838 join.go:346] [preflight] WARNING: JoinControlPane.controlPlane settings will be ignored when control-plane flag is not set.
+            [preflight] Running pre-flight checks
+            [preflight] Reading configuration from the cluster...
+            [preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+            [kubelet-start] Downloading configuration for the kubelet from the "kubelet-config-1.18" ConfigMap in the kube-system namespace
+            [kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+            [kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+            [kubelet-start] Starting the kubelet
+            [kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
 
-		This node has joined the cluster:
-		* Certificate signing request was sent to apiserver and a response was received.
-		* The Kubelet was informed of the new secure connection details.
+            This node has joined the cluster:
+            * Certificate signing request was sent to apiserver and a response was received.
+            * The Kubelet was informed of the new secure connection details.
 
-		Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+            Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
 
-	- Now on the master we deploy the calico networking pod config
+	- TODO Now on the master we deploy the calico networking pod config
 		kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
 
 

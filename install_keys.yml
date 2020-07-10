@@ -1,0 +1,42 @@
+---
+- hosts: all
+  gather_facts: no
+  tasks:
+  - name: Delete any previous ssh key pairs in the folder
+    file:
+      path: "./ssh_keys/{{ item }}"
+      state: absent
+    with_items:
+      - kubeadm_test
+      - kubeadm_test.pub
+    delegate_to: 127.0.0.1
+    run_once: true
+  - name: Generate a new Random ssh key pair
+    command: ssh-keygen -f ./ssh_keys -t ed25519 -N '' -f ./ssh_keys/kubeadm_test
+    run_once: true
+    delegate_to: 127.0.0.1
+    register: keypair_generation_output
+  - debug: var=keypair_generation_output
+  - name: identify public key content on control machine
+    command: cat ./ssh_keys/kubeadm_test.pub
+    register: pub_key
+    run_once: true
+    delegate_to: 127.0.0.1
+  - debug: var=pub_key
+  - name: Transfer public key to guest machine
+    command: vagrant scp ssh_keys/kubeadm_test.pub .
+    run_once: true
+    delegate_to: 127.0.0.1
+  - name: Remove previous redundant ed_25119 keys
+    shell: vagrant ssh {{ inventory_hostname }} -c 'sed -i "/ssh-ed25519/d" ~/.ssh/authorized_keys'
+    delegate_to: 127.0.0.1
+  - name: put public key into the authorized_keys of the remote machines
+    shell: vagrant ssh {{ inventory_hostname }} -c 'cat kubeadm_test.pub >> ~/.ssh/authorized_keys'
+    delegate_to: 127.0.0.1
+  - name: Delete public keys
+    shell: vagrant ssh {{ inventory_hostname }} -c 'rm kubeadm_test.pub'
+    delegate_to: 127.0.0.1
+  - name: add ssh key to ssh agent
+    command: ssh-add ./ssh_keys/kubeadm_test
+    delegate_to: 127.0.0.1
+    run_once: true

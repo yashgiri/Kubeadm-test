@@ -31,29 +31,3 @@ systemctl daemon-reload
 systemctl restart docker
 # make docker to start on boot
 sudo systemctl enable docker
-
-cat > /etc/yum.repos.d/kubernetes.repo <<EOF 
-[kubernetes]
-name=Kubernetes
-baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
-enabled=1
-gpgcheck=1
-repo_gpgcheck=1
-gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-exclude=kubelet kubeadm kubectl
-EOF
-# Set SELinux in permissive mode (effectively disabling it)
-setenforce 0
-sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
-
-yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
-
-cat << EOF >> /etc/sysctl.conf
-net.bridge.bridge-nf-call-iptables = 1
-EOF
-sysctl -p
-
-systemctl enable --now kubelet || true
-
-systemctl daemon-reload
-systemctl restart kubelet

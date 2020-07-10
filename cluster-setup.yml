@@ -1,0 +1,139 @@
+--- 
+- hosts: all
+  gather_facts: true
+  become_user: vagrant
+  tasks:
+  - name: Create file for package installation specific to centos
+    copy:
+      dest: /etc/yum.repos.d/kubernetes.repo
+      src: ./installation_files/kubernetes.repo
+    become: yes
+    become_user: root
+  - name: Disable SELinux
+    selinux:
+      state: disabled
+    become: yes
+    become_user: root
+  - name: set SELINUX to permissive
+    replace:
+      path: /etc/selinux/config
+      regexp: 'SELINUX=enforcing'
+      replace: 'SELINUX=permissive'
+    become: yes
+    become_user: root
+  - name: Install these packages - kubelet kubeadm kubectl
+    yum:
+      name: "{{ packages }}"
+      state: latest
+      disable_excludes: all
+      exclude: kubernetes
+    vars:
+      packages:
+        - kubelet
+        - kubeadm
+        - kubectl
+    become: yes
+    become_user: root
+  - name: change sysctl config to pass kubeadm pre flight check and do a reload (sysctl -p)
+    sysctl:
+      name: net.bridge.bridge-nf-call-iptables
+      value: '1'
+      state: present
+      reload: yes
+    become: yes
+    become_user: root
+  - name: enable systemctl
+    systemd:
+      enabled: yes
+      name: kubelet
+      state: started
+    become: yes
+    become_user: root
+  - name: systemctl daemon reload
+    systemd: 
+      daemon_reload: yes
+    become: yes
+    become_user: root
+  - name: systemctl restart kubelet
+    systemd:
+      state: restarted
+      name: kubelet
+    become: yes
+    become_user: root
+- hosts: master
+  become_user: vagrant
+  vars:
+    host_name: "{{ ansible_hostname }}"
+    ip_addr: "{{ hostvars[inventory_hostname]['ansible_env'].SSH_CONNECTION.split(' ')[2] }}"
+  tasks:
+  - debug: var=ip_addr
+  - name: Check whether Kubernetes has already been initialized.
+    stat:
+      path: /etc/kubernetes/admin.conf
+    register: kubernetes_init_stat
+  - name: Kubeadm Init process
+    command: kubeadm init --apiserver-advertise-address={{ ip_addr }} --apiserver-cert-extra-sans={{ ip_addr }} --node-name {{ host_name }} --pod-network-cidr=192.168.0.0/16
+    register: init_output
+    become: yes
+    become_user: root
+    when: not kubernetes_init_stat.stat.exists
+  - debug: var=init_output.stdout_lines
+  - name: Create a directory .kube in the home folder
+    file:
+      path: ~/.kube
+      state: directory
+  - name: sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    copy:
+      src: /etc/kubernetes/admin.conf
+      dest: "{{ ansible_env['HOME'] }}/.kube/config"
+      force: yes
+      remote_src: yes
+    become: yes
+    become_user: root
+  # - name: Collect uid and gid info 
+  #   command: id -nu
+  #   register: user_name
+  # - name: Collect gid info
+  #   command: id -ng
+  #   register: group_name
+  # - debug: var=user_name
+  # - debug: var=group_name
+  # - name: Change ownership for $HOME/.kube/config
+  #   file:
+  #     path: "{{ ansible_env.HOME }}/.kube/config"
+  #     owner: "{{ user_name }}"
+  #     group: "{{ group_name }}"
+  #   become: yes
+  #   become_user: root
+  - name: Change ownership sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    shell: "chown $(id -u):$(id -g) {{ ansible_env['HOME'] }}/.kube/config"
+    become: yes
+    become_user: root
+  - name: kubectl cluster-info
+    command: kubectl cluster-info
+    register: cluster_info
+  - debug: var=cluster_info.stdout_lines
+  - name: Create token and join message and store it in temp
+    command: kubeadm token create --print-join-command --ttl 5m
+    register: join_command
+  - debug: var=join_command
+  - name: Copy join_command to local file on control machine
+    local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="./knodes-join-command"
+- hosts: worker
+  become_user: vagrant
+  tasks:
+  - name: ping check
+    ping:
+  - name: Copy the join_command to guest machine
+    copy:
+      src: knodes-join-command
+      dest: /tmp/knodes-join-command.sh
+      mode: 0777
+  - name: Join the node to the cluster
+    command: sh /tmp/knodes-join-command.sh
+    register: join_output
+    become: yes
+    become_user: root
+  - debug: var=join_output
+  - name: Cleanup join command
+    local_action: file path="./knodes-join-command" state=absent

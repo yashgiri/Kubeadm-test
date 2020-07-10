@@ -1,0 +1,4 @@
+[master]
+k8s-head
+[worker]
+k8s-node-1
