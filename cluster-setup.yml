@@ -24,7 +24,7 @@
   - name: Install these packages - kubelet kubeadm kubectl
     yum:
       name: "{{ packages }}"
-      state: latest
+      state: present
       disable_excludes: all
       exclude: kubernetes
     vars:
@@ -90,21 +90,6 @@
       remote_src: yes
     become: yes
     become_user: root
-  # - name: Collect uid and gid info 
-  #   command: id -nu
-  #   register: user_name
-  # - name: Collect gid info
-  #   command: id -ng
-  #   register: group_name
-  # - debug: var=user_name
-  # - debug: var=group_name
-  # - name: Change ownership for $HOME/.kube/config
-  #   file:
-  #     path: "{{ ansible_env.HOME }}/.kube/config"
-  #     owner: "{{ user_name }}"
-  #     group: "{{ group_name }}"
-  #   become: yes
-  #   become_user: root
   - name: Change ownership sudo chown $(id -u):$(id -g) $HOME/.kube/config
     shell: "chown $(id -u):$(id -g) {{ ansible_env['HOME'] }}/.kube/config"
     become: yes
@@ -137,3 +122,16 @@
   - debug: var=join_output
   - name: Cleanup join command
     local_action: file path="./knodes-join-command" state=absent
+- hosts: master
+  become_user: vagrant
+  tasks:
+    - pause:
+        minutes: 1
+    - name: Check how many nodes in the cluster
+      command: kubectl get nodes
+      register: kubectl_get_nodes_output
+    - debug: var=kubectl_get_nodes_output
+    - name: Deploy Calico network
+      command: kubectl apply -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
+      register: pod_deploy_output
+    - debug: var=pod_deploy_output

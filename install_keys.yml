@@ -2,7 +2,19 @@
 - hosts: all
   gather_facts: no
   tasks:
-  - name: Delete any previous ssh key pairs in the folder
+  - name: Check whether key pair is present or not.
+    stat:
+      path: ./ssh_keys/kubeadm_test
+    register: key_pair_exists
+    delegate_to: 127.0.0.1
+  - name: Delete any previous k8s-hosts in the known_hosts file
+    lineinfile:
+      path: ~/.ssh/known_hosts
+      regexp: k8s-*
+      state: absent
+    delegate_to: 127.0.0.1
+    run_once: true
+  - name: Delete any previous kubeadm_test keys
     file:
       path: "./ssh_keys/{{ item }}"
       state: absent
@@ -11,12 +23,15 @@
       - kubeadm_test.pub
     delegate_to: 127.0.0.1
     run_once: true
+    when: not key_pair_exists.stat.exists
   - name: Generate a new Random ssh key pair
     command: ssh-keygen -f ./ssh_keys -t ed25519 -N '' -f ./ssh_keys/kubeadm_test
     run_once: true
     delegate_to: 127.0.0.1
     register: keypair_generation_output
+    when: not key_pair_exists.stat.exists
   - debug: var=keypair_generation_output
+    when: not key_pair_exists.stat.exists
   - name: identify public key content on control machine
     command: cat ./ssh_keys/kubeadm_test.pub
     register: pub_key
